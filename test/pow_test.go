@@ -6,7 +6,7 @@ import (
 )
 
 func TestProofOfWork(t *testing.T) {
-	pow := core.NewProofOfWork(core.NewGenesisBlock())
+	pow := core.NewProofOfWork(core.NewGenesisBlock("tester"))
 	pow.Work()
 }
 

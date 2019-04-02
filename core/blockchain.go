@@ -1,11 +1,13 @@
 package core
 
+import "log"
+
 type BlockChain interface {
 	LastBlock() *Block
-	AddBlock(data string)
+	AddBlock(data []byte)
 	Blocks() []*Block
-	Height() int
 	List()
+	Find(f func(*Block) bool)
 }
 
 /**
@@ -24,33 +26,29 @@ func (mbc *MemoryBlockChain) List() {
 }
 
 func (mbc *MemoryBlockChain) LastBlock() *Block {
-	if mbc.Height() < 1 {
+	height := len(mbc.blocks)
+	if height < 1 {
 		return nil
+
 	}
-	return mbc.Blocks()[mbc.Height()-1]
+	return mbc.Blocks()[height-1]
 }
 
-func (mbc *MemoryBlockChain) AddBlock(data string) {
-	prevBlock := mbc.LastBlock()
-	var newBlock *Block
-	if prevBlock == nil {
-		newBlock = NewGenesisBlock()
-	} else {
-		newBlock = NewBlock(data, prevBlock.Hash)
-	}
-	mbc.blocks = append(mbc.blocks, newBlock)
+func (mbc *MemoryBlockChain) AddBlock(data []byte) {
+	//添加新区块
+	mbc.blocks = append(mbc.blocks, NewBlock(data, mbc.LastBlock().Hash))
 }
 
 func (mbc *MemoryBlockChain) Blocks() []*Block {
 	return mbc.blocks
 }
 
-func (mbc *MemoryBlockChain) Height() int {
-	return len(mbc.Blocks())
+func (mbc *MemoryBlockChain) Find(f func(*Block) bool) {
+
 }
 
-func NewMemoryBlockChain() BlockChain {
-	return &MemoryBlockChain{}
+func NewMemoryBlockChain(address string) BlockChain {
+	return &MemoryBlockChain{blocks: []*Block{NewGenesisBlock(address)}} //创建区块链时，创建创世区块
 }
 
 /**
@@ -58,29 +56,86 @@ Memory Block Chain
 =>end
 */
 
+/**
+DB Block Chain
+=>start
+*/
+
 type DbBlockChain struct {
+	tip []byte
+	db  DB
+}
+
+func (dbc *DbBlockChain) Find(f func(*Block) bool) {
+	block := dbc.LastBlock()
+	for f(block) {
+		if block.PrevBlockHash != nil {
+			block = UnSerializeBlock(dbc.db.GetValue(block.PrevBlockHash))
+		} else {
+			break
+		}
+	}
 }
 
 func (dbc *DbBlockChain) LastBlock() *Block {
-	panic("implement me")
+	return UnSerializeBlock(dbc.db.GetValue(dbc.tip))
 }
 
-func (dbc *DbBlockChain) AddBlock(data string) {
-	panic("implement me")
+func (dbc *DbBlockChain) AddBlock(data []byte) {
+	newBlock := NewBlock(data, dbc.LastBlock().Hash)
+	dbc.db.Put(NewData(newBlock.Hash, Serialize(newBlock))) // save this block to DB
+	dbc.setTip(newBlock.Hash)                               //set last hash = this block's hash
 }
 
 func (dbc *DbBlockChain) Blocks() []*Block {
-	panic("implement me")
-}
-
-func (dbc *DbBlockChain) Height() int {
-	panic("implement me")
+	var blocks []*Block
+	block := dbc.LastBlock()
+	for true {
+		blocks = append(blocks, block)
+		if block.PrevBlockHash != nil {
+			block = UnSerializeBlock(dbc.db.GetValue(block.PrevBlockHash))
+		} else {
+			break
+		}
+	}
+	return blocks
 }
 
 func (dbc *DbBlockChain) List() {
-	panic("implement me")
+	for _, block := range dbc.Blocks() {
+		block.Print()
+	}
 }
 
-func NewDbBlockChain() BlockChain {
-	return &DbBlockChain{}
+const lastHashKey = "lastHash"
+
+func (dbc *DbBlockChain) setTip(hash []byte) {
+	dbc.db.Put(NewData([]byte(lastHashKey), hash))
+	dbc.tip = hash
 }
+
+func (dbc *DbBlockChain) getTip() []byte {
+	return dbc.db.GetValue([]byte(lastHashKey))
+}
+
+func NewDbBlockChain(address, dbFile, bucketName string) BlockChain {
+	if address == "" {
+		log.Panic("Need a address to create a block chain")
+	}
+	dbc := &DbBlockChain{db: NewBoltDB(dbFile, bucketName)}
+	lastHash := dbc.getTip()
+	if lastHash == nil { //如果区块链为空，则创建创世块
+		genesisBlock := NewGenesisBlock(address)
+		//l保存最后一个区块的hash
+		dbc.db.Put(NewData(genesisBlock.Hash, Serialize(genesisBlock)))
+		dbc.setTip(genesisBlock.Hash)
+	} else {
+		dbc.tip = lastHash
+	}
+	return dbc
+}
+
+/**
+DB Block Chain
+=>end
+*/

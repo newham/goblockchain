@@ -20,7 +20,7 @@ var difficulty = 8
 
 func (pow *PoW) Work() (int, []byte) {
 	nonce := 0
-	hash := []byte{}
+	var hash []byte
 	isValidate := false
 	for nonce < maxNonce {
 		isValidate, hash = pow.Validate(nonce)
@@ -36,7 +36,6 @@ func (pow *PoW) Work() (int, []byte) {
 func (pow *PoW) Validate(nonce int) (bool, []byte) {
 	var hashInt big.Int
 	hash := pow.BlockDataHash(nonce)
-	//fmt.Printf("\r%x,%d", hash, nonce)
 	hashInt.SetBytes(hash)
 	isValid := hashInt.Cmp(pow.target) == -1 // hashInt <  target ，即hash的前targetBits位为0
 	return isValid, hash
@@ -58,7 +57,6 @@ func (pow *PoW) BlockDataHash(nonce int) []byte {
 }
 
 func NewProofOfWork(block *Block) *PoW {
-	//fmt.Printf("Proof of Work: %s\n", block.Data)
 	target := big.NewInt(0)
 	target.SetBit(target, 256-difficulty, 1) // 将第256-difficulty 位设为1，之后为0
 	//target.Lsh(target, uint(256-difficulty)) // 左移（256-difficulty）位，得到一个前targetBits为0，形如00000...010000000...00的字节码
