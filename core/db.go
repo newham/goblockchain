@@ -1,17 +1,18 @@
 package core
 
 import (
+	"errors"
 	"github.com/boltdb/bolt"
 	"log"
 	"time"
 )
 
 type DB interface {
-	Put(data Data) error
-	Puts(dataList ...Data) error
+	Put(data Data)
+	Puts(dataList ...Data)
 	GetValue(key []byte) []byte
-	DeleteValue(key []byte) error
-	Close() error
+	DeleteValue(key []byte)
+	Close()
 }
 
 type Data struct {
@@ -27,14 +28,47 @@ func NewStringData(key, value string) Data {
 	return Data{[]byte(key), []byte(value)}
 }
 
-type BoltDB struct {
+type mapDB struct {
+	dataMap map[string][]byte
+}
+
+func (mdb *mapDB) Put(data Data) {
+	mdb.dataMap[string(data.Key)] = data.Value
+}
+
+func (mdb *mapDB) Puts(dataList ...Data) {
+	for _, data := range dataList {
+		mdb.dataMap[string(data.Key)] = data.Value
+	}
+}
+
+func (mdb *mapDB) GetValue(key []byte) []byte {
+	return mdb.dataMap[string(key)]
+}
+
+func (mdb *mapDB) DeleteValue(key []byte) {
+	mdb.dataMap[string(key)] = nil
+}
+
+func (mdb *mapDB) Close() {
+	panic("implement me")
+}
+
+type boltDB struct {
 	dbFile     string
 	bucketName []byte
 	db         *bolt.DB
 }
 
-func (bdb *BoltDB) Close() error {
-	return bdb.db.Close()
+func (bdb *boltDB) Close() {
+	err := bdb.db.Close()
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
+func NewMapDB() DB {
+	return &mapDB{dataMap: map[string][]byte{}}
 }
 
 const (
@@ -49,7 +83,7 @@ func NewBoltDB(dbFile string, bucketName string) DB {
 	if bucketName == "" {
 		bucketName = defaultBucketName
 	}
-	bdb := &BoltDB{dbFile: dbFile, bucketName: []byte(bucketName)}
+	bdb := &boltDB{dbFile: dbFile, bucketName: []byte(bucketName)}
 	var err error
 	bdb.db, err = bolt.Open(dbFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
@@ -58,50 +92,55 @@ func NewBoltDB(dbFile string, bucketName string) DB {
 	return bdb
 }
 
-func (bdb *BoltDB) Put(data Data) error {
-	return bdb.db.Update(func(tx *bolt.Tx) error {
+func (bdb *boltDB) Put(data Data) {
+	err := bdb.db.Update(func(tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists(bdb.bucketName)
 		if err != nil {
-			log.Panic(err)
+			return err
 		}
 		err = bucket.Put(data.Key, data.Value)
-		if err != nil {
-			log.Panic(err)
-		}
 		return err
 	})
+	if err != nil {
+		log.Panic(err)
+	}
 }
 
-func (bdb *BoltDB) Puts(dataList ...Data) error {
-	return bdb.db.Update(func(tx *bolt.Tx) error {
+func (bdb *boltDB) Puts(dataList ...Data) {
+	err := bdb.db.Update(func(tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists(bdb.bucketName)
 		if err != nil {
-			log.Panic(err)
+			return err
 		}
 		for _, data := range dataList {
 			err = bucket.Put(data.Key, data.Value)
 			if err != nil {
-				log.Panic(err)
+				return err
 			}
 		}
-		return err
+		return nil
 	})
+	if err != nil {
+		log.Panic(err)
+	}
 }
 
-func (bdb *BoltDB) GetValue(key []byte) []byte {
+func (bdb *boltDB) GetValue(key []byte) []byte {
 	var value []byte
-	bdb.db.View(func(tx *bolt.Tx) error {
+	err := bdb.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(bdb.bucketName)
 		if bucket != nil {
 			value = bucket.Get(key)
 		} else {
-			value = nil
+			return errors.New("no exist")
 		}
 		return nil
 	})
+	if err != nil {
+		return nil
+	}
 	return value
 }
 
-func (bdb *BoltDB) DeleteValue(key []byte) error {
-	return nil
+func (bdb *boltDB) DeleteValue(key []byte) {
 }

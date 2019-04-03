@@ -6,7 +6,7 @@ import (
 )
 
 type Client struct {
-	blockChain BlockChain
+	blockChain *BlockChain
 }
 
 func NewClient(address string) *Client {

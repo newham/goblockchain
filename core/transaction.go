@@ -68,48 +68,22 @@ func AddTransaction(transaction Transaction) {
 }
 
 func NewTransaction(from, to string, amount float32, bc BlockChain) *Transaction {
-	//var inputs []TxInput
-	//var outputs []TxOutput
-	//for _, block := range bc.Blocks() {
+	//var txInputs  []TxInput
+	//var txOutputs []TxOutput
+	//account, spendableOutputs := FindSpendableOutputs(bc, from)
+	//
+	//if amount>account{
+	//	log.Panic("Error: funds not enough")
+	//}
+	//for id,outs :=range spendableOutputs{
 	//
 	//}
 	return nil
 }
 
-func FindSpendableOutputs(address string, bc BlockChain) []TxOutput {
+func FindSpendableOutputs(bc *BlockChain, address string) (float32, []TxOutput) {
 	var outputs []TxOutput
-	bc.Find(func(block *Block) bool {
-		transactions := UnSerializeTransactions(block.Data)
-		for _, transaction := range transactions {
-			for _, input := range transaction.VIn {
-				if input.ScriptSig == address {
-					outputs = append(outputs)
-				} else {
+	var account float32
 
-				}
-			}
-		}
-		return true
-	})
-	return nil
-}
-
-func Budget(bc BlockChain, address string) float32 {
-	var budget float32 = 0
-	for _, block := range bc.Blocks() {
-		transactions := UnSerializeTransactions(block.Data)
-		for _, transaction := range transactions {
-			for _, out := range transaction.VOut {
-				if out.ScriptPubKey == address {
-					budget += out.Value
-				}
-			}
-			for _, in := range transaction.VIn {
-				if in.ScriptSig == address {
-					budget -= in.VOut
-				}
-			}
-		}
-	}
-	return budget
+	return account, outputs
 }

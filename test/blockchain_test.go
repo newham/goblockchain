@@ -23,26 +23,26 @@ func TestList(t *testing.T) {
 }
 
 func TestLastBlock(t *testing.T) {
-	dbc := core.NewDbBlockChain("tester", "", "")
 	dbc.LastBlock().Print()
 }
 
 func TestAddBlock(t *testing.T) {
-	dbc := core.NewDbBlockChain("tester", "", "")
 	dbc.AddBlock([]byte(fmt.Sprintf("%d-%s", rand.Intn(100), "test data")))
 	dbc.List()
 }
 
 func TestBlocks(t *testing.T) {
-	dbc := core.NewDbBlockChain("tester", "", "")
 	for _, b := range dbc.Blocks() {
 		b.Print()
 	}
 }
 
-func TestFind(t *testing.T) {
-	dbc.Find(func(block *core.Block) bool {
+func TestNext(t *testing.T) {
+	bci := core.NewBlockChainIterator(dbc)
+	block := bci.Next()
+	for block != nil {
 		block.Print()
-		return true
-	})
+		block = bci.Next()
+	}
+
 }

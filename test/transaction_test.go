@@ -2,7 +2,6 @@ package test
 
 import (
 	"blockchain/core"
-	"fmt"
 	"testing"
 )
 
@@ -12,7 +11,6 @@ func TestNewCoinBaseTX(t *testing.T) {
 }
 
 func TestTransaction(t *testing.T) {
-	dbc := core.NewDbBlockChain("tester", "", "")
 	lastBlock := dbc.LastBlock() //末尾区块
 	lastBlock.Print()
 	//反序列化data到Transactions
@@ -24,7 +22,6 @@ func TestTransaction(t *testing.T) {
 }
 
 func TestBudget(t *testing.T) {
-	dbc := core.NewDbBlockChain("tester", "", "")
-	budget := core.Budget(dbc, "tester")
-	fmt.Printf("tester's Budget:%f\n", budget)
+	//budget := core.Budget(dbc, "tester")
+	//fmt.Printf("tester's Budget:%f\n", budget)
 }
