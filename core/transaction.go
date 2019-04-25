@@ -2,7 +2,9 @@ package core
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"log"
 )
 
 /**
@@ -16,21 +18,30 @@ type Transaction struct {
 
 //输入
 type TxInput struct {
-	TxId      []byte
-	VOut      float32
-	ScriptSig string
+	TxId      []byte //引用之前的交易Id，Transaction.Id
+	VOutId    int    //Transaction.VOut的id索引
+	ScriptSig string //输入地址
 }
 
 //输出
 type TxOutput struct {
-	Value        float32
-	ScriptPubKey string
+	Value        float32 //输出金额
+	ScriptPubKey string  //公钥
+}
+
+func (in *TxInput) Unlock(address string) bool {
+	return in.ScriptSig == address
+}
+
+func (out *TxOutput) Unlock(address string) bool {
+	return out.ScriptPubKey == address
 }
 
 func (t *Transaction) Print() {
-	fmt.Printf("Id:%x\n", t.Id)
-	fmt.Printf("VIn:%x\n", t.VIn)
-	fmt.Printf("VOut:%x\n", t.VOut)
+	fmt.Printf("Transactions:\n")
+	fmt.Printf("\tId:%x\n", t.Id)
+	fmt.Printf("\tVIn:%x\n", t.VIn)
+	fmt.Printf("\tVOut:%x\n", t.VOut)
 }
 
 func (t *Transaction) SetId() {
@@ -42,15 +53,19 @@ func (t *Transaction) Add(from, to string) {
 
 }
 
+func (t *Transaction) IsCoinBase() bool {
+	return len(t.VIn) == 1 && len(t.VIn[0].TxId) == 0 && t.VIn[0].VOutId == -1
+}
+
 var subsidy float32 = 10
 
-func NewCoinBaseTX(to, data string) *Transaction { //to:目的用户地址，data:说明
+func NewCoinBaseTX(to, data string) Transaction { //to:目的用户地址，data:说明
 	if data == "" {
 		data = fmt.Sprintf("Reward to '%s'", to)
 	}
 	txInput := TxInput{[]byte{}, -1, data}
 	txOutput := TxOutput{subsidy, to}
-	tx := &Transaction{nil, []TxInput{txInput}, []TxOutput{txOutput}}
+	tx := Transaction{nil, []TxInput{txInput}, []TxOutput{txOutput}}
 	tx.SetId()
 	return tx
 }
@@ -67,23 +82,116 @@ func AddTransaction(transaction Transaction) {
 	LocalTransactions = append(LocalTransactions, transaction)
 }
 
-func NewTransaction(from, to string, amount float32, bc BlockChain) *Transaction {
-	//var txInputs  []TxInput
-	//var txOutputs []TxOutput
-	//account, spendableOutputs := FindSpendableOutputs(bc, from)
-	//
-	//if amount>account{
-	//	log.Panic("Error: funds not enough")
-	//}
-	//for id,outs :=range spendableOutputs{
-	//
-	//}
-	return nil
+func NewTransaction(bc *BlockChain, from, to string, amount float32) {
+	var txInputs []TxInput
+	var txOutputs []TxOutput
+	account, spendableOutputs := FindSpendableOutputs(bc, from, amount)
+	if account < amount {
+		log.Panic("Error: funds not enough")
+	}
+	for id, outs := range spendableOutputs {
+		txId, err := hex.DecodeString(id)
+		if err != nil {
+			log.Panic(err)
+		}
+		for _, out := range outs {
+			txInput := TxInput{txId, out, from}
+			txInputs = append(txInputs, txInput)
+		}
+	}
+
+	txOutputs = append(txOutputs, TxOutput{amount, to})
+
+	//找零
+	if account > amount {
+		txOutputs = append(txOutputs, TxOutput{account - amount, from})
+	}
+	tx := Transaction{nil, txInputs, txOutputs}
+	tx.SetId()
+
+	AddTransaction(tx)
 }
 
-func FindSpendableOutputs(bc *BlockChain, address string) (float32, []TxOutput) {
-	var outputs []TxOutput
-	var account float32
+//寻找未花费的交易
+func FindUnspentTransactions(bc *BlockChain, address string) []Transaction {
+	var unspentTXs []Transaction
+	spentTXOs := map[string][]int{} //已经花费的TxId
+	bci := bc.Iterator()
+	for {
+		block := bci.Next()
+		if block == nil {
+			break
+		}
 
-	return account, outputs
+		for _, tx := range UnSerializeTransactions(block.Data) {
+			txId := hex.EncodeToString(tx.Id)
+
+		Outputs:
+			for outId, out := range tx.VOut {
+				if spentTXOs[txId] != nil { //交易已经被花费
+					for _, spentOut := range spentTXOs[txId] {
+						if spentOut == outId {
+							continue Outputs
+						}
+					}
+				}
+				if out.Unlock(address) { //可用的交易
+					unspentTXs = append(unspentTXs, tx)
+				}
+			}
+			if !tx.IsCoinBase() {
+				for _, in := range tx.VIn {
+					if in.Unlock(address) {
+						inTxId := hex.EncodeToString(in.TxId)
+						spentTXOs[inTxId] = append(spentTXOs[inTxId], in.VOutId)
+					}
+				}
+			}
+		}
+	}
+	return unspentTXs
+}
+
+func FindTxOutputs(bc *BlockChain, address string) []TxOutput {
+	var txOutputs []TxOutput
+	unspentTransactions := FindUnspentTransactions(bc, address)
+
+	for _, tx := range unspentTransactions {
+		for _, out := range tx.VOut {
+			if out.Unlock(address) {
+				txOutputs = append(txOutputs, out)
+			}
+		}
+	}
+	return txOutputs
+}
+
+func FindSpendableOutputs(bc *BlockChain, address string, amount float32) (float32, map[string][]int) {
+	unspentOutputs := map[string][]int{}
+	unspentTxs := FindUnspentTransactions(bc, address)
+	var accumulated float32 = 0
+
+Work:
+	for _, tx := range unspentTxs {
+		txId := hex.EncodeToString(tx.Id)
+		for outId, out := range tx.VOut {
+			if out.Unlock(address) && accumulated < amount {
+				accumulated += out.Value
+				unspentOutputs[txId] = append(unspentOutputs[txId], outId)
+				if accumulated >= amount {
+					break Work
+				}
+			}
+		}
+	}
+	return accumulated, unspentOutputs
+}
+
+func Balance(bc *BlockChain, address string) float32 {
+	var balance float32
+	txOutputs := FindTxOutputs(bc, address)
+	for _, txOutput := range txOutputs {
+		balance += txOutput.Value
+	}
+	return balance
 }

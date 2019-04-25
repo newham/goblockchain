@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/hex"
 	"errors"
 	"github.com/boltdb/bolt"
 	"log"
@@ -33,21 +34,21 @@ type mapDB struct {
 }
 
 func (mdb *mapDB) Put(data Data) {
-	mdb.dataMap[string(data.Key)] = data.Value
+	mdb.dataMap[hex.EncodeToString(data.Key)] = data.Value
 }
 
 func (mdb *mapDB) Puts(dataList ...Data) {
 	for _, data := range dataList {
-		mdb.dataMap[string(data.Key)] = data.Value
+		mdb.dataMap[hex.EncodeToString(data.Key)] = data.Value
 	}
 }
 
 func (mdb *mapDB) GetValue(key []byte) []byte {
-	return mdb.dataMap[string(key)]
+	return mdb.dataMap[hex.EncodeToString(key)]
 }
 
 func (mdb *mapDB) DeleteValue(key []byte) {
-	mdb.dataMap[string(key)] = nil
+	mdb.dataMap[hex.EncodeToString(key)] = nil
 }
 
 func (mdb *mapDB) Close() {
@@ -70,6 +71,10 @@ func (bdb *boltDB) Close() {
 func NewMapDB() DB {
 	return &mapDB{dataMap: map[string][]byte{}}
 }
+
+/*
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+*/
 
 const (
 	defaultDbFile     = "../db/blockchain.db"

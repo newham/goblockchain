@@ -18,8 +18,9 @@ func TestNewBlockChain(t *testing.T) {
 		b.Print()
 	}
 }
-func TestList(t *testing.T) {
-	dbc.List()
+
+func TestPrint(t *testing.T) {
+	dbc.Print()
 }
 
 func TestLastBlock(t *testing.T) {
@@ -28,7 +29,7 @@ func TestLastBlock(t *testing.T) {
 
 func TestAddBlock(t *testing.T) {
 	dbc.AddBlock([]byte(fmt.Sprintf("%d-%s", rand.Intn(100), "test data")))
-	dbc.List()
+	dbc.Print()
 }
 
 func TestBlocks(t *testing.T) {
@@ -38,10 +39,15 @@ func TestBlocks(t *testing.T) {
 }
 
 func TestNext(t *testing.T) {
-	bci := core.NewBlockChainIterator(dbc)
+	bci := dbc.Iterator()
 	block := bci.Next()
 	for block != nil {
 		block.Print()
+		txs := core.UnSerializeTransactions(block.Data)
+		for _, tx := range txs {
+			tx.Print()
+		}
+		println(">>>>>>>>>")
 		block = bci.Next()
 	}
 

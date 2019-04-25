@@ -15,10 +15,14 @@ type Block struct {
 
 func (b *Block) Print() {
 	fmt.Printf("PrevHash: %x\n", b.PrevBlockHash)
-	fmt.Printf("Data: %x\n", b.Data)
+	if len(b.Data) > 32 {
+		fmt.Printf("Data: %x...\n", b.Data[:32])
+	} else {
+		fmt.Printf("Data: %x\n", b.Data)
+	}
 	fmt.Printf("Timestamp: %d\n", b.Timestamp)
 	fmt.Printf("Nonce: %d\n", b.Nonce)
-	fmt.Printf("Hash: %x\n\n", b.Hash)
+	fmt.Printf("Hash: %x\n", b.Hash)
 }
 
 func NewBlock(data []byte, preBlockHash []byte) *Block {
@@ -63,5 +67,5 @@ func UnSerializeBlock(data []byte) *Block {
 
 //创世块
 func NewGenesisBlock(address string) *Block {
-	return NewBlock(Serialize([]*Transaction{NewCoinBaseTX(address, "")}), nil)
+	return NewBlock(Serialize([]Transaction{NewCoinBaseTX(address, "")}), nil)
 }

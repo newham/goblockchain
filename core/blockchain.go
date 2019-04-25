@@ -31,10 +31,14 @@ func (bc *BlockChain) Blocks() []*Block {
 	return blocks
 }
 
-func (bc *BlockChain) List() {
+func (bc *BlockChain) Print() {
 	for _, block := range bc.Blocks() {
 		block.Print()
 	}
+}
+
+func (bc *BlockChain) Iterator() *BlockChainIterator {
+	return &BlockChainIterator{bc.tip, bc}
 }
 
 const lastHashKey = "lastHash"
@@ -86,8 +90,4 @@ func (dci *BlockChainIterator) Next() *Block {
 	block := UnSerializeBlock(dci.bc.db.GetValue(dci.currentHash))
 	dci.currentHash = block.PrevBlockHash
 	return block
-}
-
-func NewBlockChainIterator(bc *BlockChain) *BlockChainIterator {
-	return &BlockChainIterator{bc.tip, bc}
 }

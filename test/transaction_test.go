@@ -2,6 +2,7 @@ package test
 
 import (
 	"blockchain/core"
+	"fmt"
 	"testing"
 )
 
@@ -21,7 +22,22 @@ func TestTransaction(t *testing.T) {
 	}
 }
 
-func TestBudget(t *testing.T) {
-	//budget := core.Budget(dbc, "tester")
-	//fmt.Printf("tester's Budget:%f\n", budget)
+func TestNewTransaction(t *testing.T) {
+	from := "tester"
+	to := "lucy"
+	var amount float32 = 0.1
+	fmt.Printf("%s: %f\n", from, core.Balance(dbc, from))
+	core.NewTransaction(dbc, from, to, amount)
+	dbc.AddBlock(core.Serialize(core.LocalTransactions))
+	fmt.Printf("%s: %f\n", from, core.Balance(dbc, from))
+	fmt.Printf("%s: %f\n", to, core.Balance(dbc, to))
+}
+
+func TestBalance(t *testing.T) {
+	address1 := "tester"
+	address2 := "jack"
+	address3 := "lucy"
+	fmt.Printf("%s: %f\n", address1, core.Balance(dbc, address1))
+	fmt.Printf("%s: %f\n", address2, core.Balance(dbc, address2))
+	fmt.Printf("%s: %f\n", address3, core.Balance(dbc, address3))
 }

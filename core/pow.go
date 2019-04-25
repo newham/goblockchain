@@ -19,6 +19,7 @@ var maxNonce = math.MaxInt64
 var difficulty = 8
 
 func (pow *PoW) Work() (int, []byte) {
+
 	nonce := 0
 	var hash []byte
 	isValidate := false
