@@ -27,6 +27,8 @@ func TestNewTransaction(t *testing.T) {
 	to := "lucy"
 	var amount float32 = 0.1
 	fmt.Printf("%s: %f\n", from, core.Balance(dbc, from))
+	fmt.Printf("%s: %f\n", to, core.Balance(dbc, to))
+	fmt.Printf("NewTransaction from %s to %s\n", from, to)
 	core.NewTransaction(dbc, from, to, amount)
 	dbc.AddBlock(core.Serialize(core.LocalTransactions))
 	fmt.Printf("%s: %f\n", from, core.Balance(dbc, from))

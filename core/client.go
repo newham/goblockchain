@@ -26,17 +26,18 @@ func (c *Client) validateArgs() {
 		switch arg1 {
 		case "list":
 			println(argsContent[arg1])
-		case "-h":
+		case "help":
 			c.help(-1)
 		case "add":
 			if len(os.Args) < 3 {
-				println("input: -a [data]")
+				println(argsContent[arg1])
 			} else {
 				data := os.Args[2]
 				c.blockChain.AddBlock([]byte(data))
 				c.blockChain.LastBlock().Print()
 			}
-
+		case "send":
+			println(argsContent[arg1])
 		}
 	}
 }
@@ -44,7 +45,7 @@ func (c *Client) validateArgs() {
 var argsContent = map[string]string{
 	"help": "help",
 	"list": "list block chain",
-	"add":  "add a new block",
+	"add":  "[data] , add a new block with data",
 	"send": "-amount [float] -from [from address] -to [to address]",
 }
 

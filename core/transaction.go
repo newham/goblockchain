@@ -26,7 +26,7 @@ type TxInput struct {
 //输出
 type TxOutput struct {
 	Value        float32 //输出金额
-	ScriptPubKey string  //公钥
+	ScriptPubKey string  //目的地址的公钥，目的地址可以用私钥解开
 }
 
 func (in *TxInput) Unlock(address string) bool {
@@ -82,10 +82,13 @@ func AddTransaction(transaction Transaction) {
 	LocalTransactions = append(LocalTransactions, transaction)
 }
 
+/**
+创建交易
+*/
 func NewTransaction(bc *BlockChain, from, to string, amount float32) {
-	var txInputs []TxInput
-	var txOutputs []TxOutput
-	account, spendableOutputs := FindSpendableOutputs(bc, from, amount)
+	var txInputs []TxInput                                              //输入
+	var txOutputs []TxOutput                                            //输出
+	account, spendableOutputs := FindSpendableOutputs(bc, from, amount) // 得到可用的输出
 	if account < amount {
 		log.Panic("Error: funds not enough")
 	}
@@ -115,26 +118,26 @@ func NewTransaction(bc *BlockChain, from, to string, amount float32) {
 //寻找未花费的交易
 func FindUnspentTransactions(bc *BlockChain, address string) []Transaction {
 	var unspentTXs []Transaction
-	spentTXOs := map[string][]int{} //已经花费的TxId
-	bci := bc.Iterator()
+	spentTXOs := map[string][]int{} //已经花费的outId
+	bci := bc.Iterator()            //开始遍历整个链
 	for {
-		block := bci.Next()
-		if block == nil {
+		block := bci.Next() //获取一个区块
+		if block == nil {   //区块为空跳出循环
 			break
 		}
 
-		for _, tx := range UnSerializeTransactions(block.Data) {
-			txId := hex.EncodeToString(tx.Id)
+		for _, tx := range UnSerializeTransactions(block.Data) { //检查该区块中的每笔交易
+			txId := hex.EncodeToString(tx.Id) //交易Id
 
 		Outputs:
-			for outId, out := range tx.VOut {
-				if spentTXOs[txId] != nil { //交易已经被花费
-					for _, spentOut := range spentTXOs[txId] {
-						if spentOut == outId {
-							continue Outputs
-						}
+			for outId, out := range tx.VOut { //检查交易的输出是否已经作为输入（被花费）
+
+				for _, spentOut := range spentTXOs[txId] {
+					if spentOut == outId { //如果已经花费，则继续循环下一笔交易
+						continue Outputs
 					}
 				}
+
 				if out.Unlock(address) { //可用的交易
 					unspentTXs = append(unspentTXs, tx)
 				}
@@ -189,7 +192,7 @@ Work:
 
 func Balance(bc *BlockChain, address string) float32 {
 	var balance float32
-	txOutputs := FindTxOutputs(bc, address)
+	txOutputs := FindTxOutputs(bc, address) //找出所有未花费的输出
 	for _, txOutput := range txOutputs {
 		balance += txOutput.Value
 	}
