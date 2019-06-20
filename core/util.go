@@ -3,7 +3,9 @@ package core
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"math/big"
+	"strconv"
 )
 
 func ToBytes(str string) []byte {
@@ -37,4 +39,10 @@ func UnSerialize(obj interface{}, data []byte) interface{} {
 		return nil
 	}
 	return obj
+}
+
+//保留5位小数
+func Decimal(value float32) float32 {
+	v, _ := strconv.ParseFloat(fmt.Sprintf("%.5f", value), 32)
+	return float32(v)
 }

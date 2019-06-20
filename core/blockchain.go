@@ -91,3 +91,14 @@ func (dci *BlockChainIterator) Next() *Block {
 	dci.currentHash = block.PrevBlockHash
 	return block
 }
+
+//While循环遍历
+func (dci *BlockChainIterator) While(f func(*Block) bool) {
+	for {
+		b := dci.Next()
+		if b == nil || !f(b) {
+			break
+		}
+	}
+
+}

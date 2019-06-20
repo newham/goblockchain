@@ -7,6 +7,11 @@ import (
 	"log"
 )
 
+const (
+	Subsidy   float32 = 10      //挖矿的奖励
+	MinAmount float32 = 0.00001 //交易的最低金额
+)
+
 /**
 比特币的交易
 */
@@ -57,14 +62,12 @@ func (t *Transaction) IsCoinBase() bool {
 	return len(t.VIn) == 1 && len(t.VIn[0].TxId) == 0 && t.VIn[0].VOutId == -1
 }
 
-var subsidy float32 = 10
-
 func NewCoinBaseTX(to, data string) Transaction { //to:目的用户地址，data:说明
 	if data == "" {
 		data = fmt.Sprintf("Reward to '%s'", to)
 	}
 	txInput := TxInput{[]byte{}, -1, data}
-	txOutput := TxOutput{subsidy, to}
+	txOutput := TxOutput{Subsidy, to}
 	tx := Transaction{nil, []TxInput{txInput}, []TxOutput{txOutput}}
 	tx.SetId()
 	return tx
@@ -86,6 +89,9 @@ func AddTransaction(transaction Transaction) {
 创建交易
 */
 func NewTransaction(bc *BlockChain, from, to string, amount float32) {
+	if amount < MinAmount {
+		log.Panic("Error: amount <", MinAmount)
+	}
 	var txInputs []TxInput                                              //输入
 	var txOutputs []TxOutput                                            //输出
 	account, spendableOutputs := FindSpendableOutputs(bc, from, amount) // 得到可用的输出
@@ -119,13 +125,9 @@ func NewTransaction(bc *BlockChain, from, to string, amount float32) {
 func FindUnspentTransactions(bc *BlockChain, address string) []Transaction {
 	var unspentTXs []Transaction
 	spentTXOs := map[string][]int{} //已经花费的outId
-	bci := bc.Iterator()            //开始遍历整个链
-	for {
-		block := bci.Next() //获取一个区块
-		if block == nil {   //区块为空跳出循环
-			break
-		}
-
+	bci := bc.Iterator()
+	//开始遍历整个链
+	bci.While(func(block *Block) bool {
 		for _, tx := range UnSerializeTransactions(block.Data) { //检查该区块中的每笔交易
 			txId := hex.EncodeToString(tx.Id) //交易Id
 
@@ -142,7 +144,7 @@ func FindUnspentTransactions(bc *BlockChain, address string) []Transaction {
 					unspentTXs = append(unspentTXs, tx)
 				}
 			}
-			if !tx.IsCoinBase() {
+			if !tx.IsCoinBase() { //将已经花费的TxId加入到
 				for _, in := range tx.VIn {
 					if in.Unlock(address) {
 						inTxId := hex.EncodeToString(in.TxId)
@@ -151,7 +153,8 @@ func FindUnspentTransactions(bc *BlockChain, address string) []Transaction {
 				}
 			}
 		}
-	}
+		return true
+	})
 	return unspentTXs
 }
 
@@ -196,5 +199,5 @@ func Balance(bc *BlockChain, address string) float32 {
 	for _, txOutput := range txOutputs {
 		balance += txOutput.Value
 	}
-	return balance
+	return Decimal(balance)
 }

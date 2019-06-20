@@ -14,9 +14,10 @@ type PoW struct {
 	target *big.Int
 }
 
-var maxNonce = math.MaxInt64
-
-var difficulty = 8
+const (
+	maxNonce   = math.MaxInt64
+	difficulty = 8
+)
 
 func (pow *PoW) Work() (int, []byte) {
 
@@ -58,13 +59,15 @@ func (pow *PoW) BlockDataHash(nonce int) []byte {
 }
 
 func NewProofOfWork(block *Block) *PoW {
+	return &PoW{block, getTarget()}
+}
+
+func getTarget() *big.Int {
 	target := big.NewInt(0)
 	target.SetBit(target, 256-difficulty, 1) // 将第256-difficulty 位设为1，之后为0
-	//target.Lsh(target, uint(256-difficulty)) // 左移（256-difficulty）位，得到一个前targetBits为0，形如00000...010000000...00的字节码
-	return &PoW{block, target}
+	return target
 }
 
 func Lsh() {
-	x := big.NewInt(0)
-	x.SetBit(x, 256, 1)
+	//target.Lsh(target, uint(256-difficulty)) // 左移（256-difficulty）位，得到一个前targetBits为0，形如00000...010000000...00的字节码
 }
