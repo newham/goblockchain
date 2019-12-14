@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -9,8 +10,14 @@ type Block struct {
 	Timestamp     int64
 	Data          []byte
 	PrevBlockHash []byte
+	NBit          int
 	Hash          []byte //上面三个数据的hash256
 	Nonce         int    //挖矿所得的随机数
+}
+
+func (b *Block) Bytes() []byte {
+	bts, _ := json.Marshal(b)
+	return bts
 }
 
 func (b *Block) Print() {
@@ -25,11 +32,12 @@ func (b *Block) Print() {
 	fmt.Printf("Hash: %x\n", b.Hash)
 }
 
-func NewBlock(data []byte, preBlockHash []byte) *Block {
+func NewBlock(data []byte, preBlockHash []byte, nBit int) *Block {
 	block := &Block{
 		Timestamp:     time.Now().UTC().Unix(), //UTC Time
 		Data:          data,
 		PrevBlockHash: preBlockHash,
+		NBit:          nBit,
 	}
 
 	//mine
@@ -41,7 +49,7 @@ func NewBlock(data []byte, preBlockHash []byte) *Block {
 }
 
 func UnSerializeBlock(data []byte) *Block {
-	return UnSerialize(NewBlock(nil, nil), data).(*Block)
+	return UnSerialize(NewBlock(nil, nil, maxDifficulty), data).(*Block)
 }
 
 /**
@@ -66,6 +74,6 @@ func UnSerializeBlock(data []byte) *Block {
 //}
 
 //创世块
-func NewGenesisBlock(address string) *Block {
-	return NewBlock(Serialize([]Transaction{NewCoinBaseTX(address, "")}), nil)
+func NewGenesisBlock(address string, nBit int) *Block {
+	return NewBlock(Serialize([]Transaction{NewCoinBaseTX(address, "")}), nil, nBit)
 }

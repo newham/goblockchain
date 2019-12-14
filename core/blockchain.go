@@ -12,7 +12,7 @@ func (bc *BlockChain) LastBlock() *Block {
 }
 
 func (bc *BlockChain) AddBlock(data []byte) {
-	newBlock := NewBlock(data, bc.LastBlock().Hash)
+	newBlock := NewBlock(data, bc.LastBlock().Hash, maxDifficulty)
 	bc.db.Put(NewData(newBlock.Hash, Serialize(newBlock))) // save this block to DB
 	bc.setTip(newBlock.Hash)                               //set last hash = this block's hash
 }
@@ -54,7 +54,7 @@ func (bc *BlockChain) getTip() []byte {
 
 func NewMemoryBlockChain(address string) *BlockChain {
 	bc := &BlockChain{db: NewMapDB()} //创建区块链时，创建创世区块
-	genesisBlock := NewGenesisBlock(address)
+	genesisBlock := NewGenesisBlock(address, maxDifficulty)
 	bc.db.Put(NewData(genesisBlock.Hash, Serialize(genesisBlock)))
 	bc.setTip(genesisBlock.Hash)
 	return bc
@@ -67,7 +67,7 @@ func NewDbBlockChain(address, dbFile, bucketName string) *BlockChain {
 	bc := &BlockChain{db: NewBoltDB(dbFile, bucketName)}
 	lastHash := bc.getTip()
 	if lastHash == nil { //如果区块链为空，则创建创世块
-		genesisBlock := NewGenesisBlock(address)
+		genesisBlock := NewGenesisBlock(address, maxDifficulty)
 		//l保存最后一个区块的hash
 		bc.db.Put(NewData(genesisBlock.Hash, Serialize(genesisBlock)))
 		bc.setTip(genesisBlock.Hash)
